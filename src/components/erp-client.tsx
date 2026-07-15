@@ -13,8 +13,10 @@ import {
   Gauge,
   Landmark,
   PackagePlus,
+  Percent,
   Receipt,
   Search,
+  Shuffle,
   ShoppingCart,
   Truck,
   UserRound,
@@ -208,6 +210,15 @@ const navGroups: NavGroup[] = [
   }
 ];
 
+const quickActions: NavItem[] = [
+  { id: "cashflow", label: "Flujo", icon: BarChart3 },
+  { id: "cxc", label: "CXC", icon: WalletCards },
+  { id: "cxp", label: "CXP", icon: FileText },
+  { id: "expenses", label: "Gastos", icon: CreditCard },
+  { id: "retentions", label: "Retenciones", icon: Percent },
+  { id: "balance", label: "Conciliacion", icon: Shuffle }
+];
+
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -285,6 +296,10 @@ export function ErpClient() {
 
   const activeLabel = useMemo(() => {
     return navGroups.flatMap((g) => g.items).find((item) => item.id === active)?.label || "Dashboard";
+  }, [active]);
+
+  const activeMeta = useMemo(() => {
+    return navGroups.flatMap((g) => g.items).find((item) => item.id === active) || navGroups[0].items[0];
   }, [active]);
 
   const filteredGroups = useMemo(() => {
@@ -535,6 +550,8 @@ export function ErpClient() {
     };
   }, [state.expenses, state.products.length, state.purchaseOrders, state.supplierProducts.length, state.suppliers.length, state.warehouses.length, stock]);
 
+  const ActiveIcon = activeMeta.icon;
+
   return (
     <div className={`app-shell ${compact ? "compact" : ""}`}>
       <aside className="sidebar">
@@ -568,10 +585,29 @@ export function ErpClient() {
 
       <main className="main">
         <header className="topbar">
-          <h1>{activeLabel}</h1>
-          <div className="user-pill">
-            <UserRound size={17} />
-            Administrador
+          <div className="page-heading">
+            <span className="module-title-icon">
+              <ActiveIcon size={18} />
+            </span>
+            <h1>{activeLabel}</h1>
+          </div>
+          <div className="topbar-actions">
+            {quickActions.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button className={active === item.id ? "top-action active" : "top-action"} key={item.id} onClick={() => setActive(item.id)}>
+                  <Icon size={15} />
+                  {item.label}
+                </button>
+              );
+            })}
+            <span className="period-pill">
+              <b>Periodo</b>
+              Actual
+            </span>
+            <div className="user-pill" title="Administrador">
+              <UserRound size={17} />
+            </div>
           </div>
         </header>
         <div className="content">{renderActive()}</div>
@@ -593,39 +629,67 @@ export function ErpClient() {
 
   function Dashboard() {
     const recentOrders = state.purchaseOrders.slice(0, 5);
+    const stockCoverage = totals.products ? Math.min(100, Math.round((totals.linked / Math.max(1, totals.products)) * 100)) : 0;
     return (
       <>
         <SectionHead title="Resumen empresarial" subtitle="Carga inicial limpia para Jaeger Enterprise Group." />
-        <div className="grid kpi-grid">
-          <Metric label="Productos" value={String(totals.products)} />
-          <Metric label="Proveedores" value={String(totals.suppliers)} />
-          <Metric label="Productos vinculados" value={String(totals.linked)} />
-          <Metric label="Bodegas" value={String(totals.warehouses)} />
-          <Metric label="Unidades en stock" value={String(totals.inventoryUnits)} />
-          <Metric label="Ordenes abiertas" value={String(totals.openOrders)} />
-          <Metric label="Compras registradas" value={money(totals.purchaseTotal)} />
-          <Metric label="Gastos del mes" value={money(totals.expenses)} />
-        </div>
-        <div className="grid two-grid" style={{ marginTop: 14 }}>
-          <div className="card">
-            <div className="card-body">
-              <h3 className="panel-title">Ultimas ordenes de compra</h3>
-              <Table
-                empty="No hay ordenes todavia."
-                headers={["Numero", "Proveedor", "Estado", "Total"]}
-                rows={recentOrders.map((order) => [order.number, order.supplierName, <StatusBadge key={order.id} status={order.status} />, money(orderTotal(order))])}
-              />
+        <div className="dashboard-grid">
+          <div className="dashboard-stack">
+            <div className="grid kpi-grid">
+              <Metric label="Productos" value={String(totals.products)} />
+              <Metric label="Proveedores" value={String(totals.suppliers)} />
+              <Metric label="Productos vinculados" value={String(totals.linked)} />
+              <Metric label="Bodegas" value={String(totals.warehouses)} />
+              <Metric label="Unidades en stock" value={String(totals.inventoryUnits)} />
+              <Metric label="Ordenes abiertas" value={String(totals.openOrders)} />
+              <Metric label="Compras registradas" value={money(totals.purchaseTotal)} />
+              <Metric label="Gastos del mes" value={money(totals.expenses)} />
+            </div>
+            <div className="card">
+              <div className="card-body">
+                <h3 className="panel-title">Flujo de trabajo resumido</h3>
+                <div className="flow-strip">
+                  <FlowRow label="Base" value={`${totals.products} productos`} pct={totals.products ? 100 : 0} />
+                  <FlowRow label="Vinculos" value={`${totals.linked} asociados`} pct={stockCoverage} />
+                  <FlowRow label="Compras" value={`${totals.openOrders} abiertas`} pct={totals.openOrders ? 70 : 12} />
+                  <FlowRow label="Stock" value={`${totals.inventoryUnits} unidades`} pct={totals.inventoryUnits ? 86 : 8} />
+                </div>
+              </div>
             </div>
           </div>
-          <div className="card">
-            <div className="card-body">
-              <h3 className="panel-title">Siguiente paso recomendado</h3>
-              <p style={{ color: "var(--muted)", fontWeight: 700, lineHeight: 1.6 }}>
-                Primero registra proveedores y productos. Luego entra a Productos por proveedor para definir que puede vender cada proveedor y con que costo.
-              </p>
-              <button className="btn primary" onClick={() => setActive("supplier-products")}>
-                Asociar productos
-              </button>
+          <div className="dashboard-stack">
+            <div className="card suggestion-card">
+              <div className="card-body">
+                <h3 className="panel-title">Pago recomendado esta semana</h3>
+                <strong style={{ display: "block", fontSize: 46, letterSpacing: "-0.06em", marginTop: 22 }}>{money(0)}</strong>
+                <p style={{ color: "var(--muted)", fontWeight: 700 }}>Sin CXP pendiente registrada en esta version.</p>
+                <button className="btn" onClick={() => setActive("cxp")}>
+                  Ver detalle
+                </button>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-body">
+                <h3 className="panel-title">Inventario - cobertura inicial</h3>
+                <p style={{ color: "var(--muted)", fontWeight: 700 }}>
+                  {totals.linked
+                    ? `${totals.linked} productos ya tienen proveedor asignado.`
+                    : "Asocia productos con proveedores para que aparezcan en las ordenes de compra."}
+                </p>
+                <button className="btn primary" onClick={() => setActive("supplier-products")}>
+                  Asociar productos
+                </button>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-body">
+                <h3 className="panel-title">Ultimas ordenes de compra</h3>
+                <Table
+                  empty="No hay ordenes todavia."
+                  headers={["Numero", "Proveedor", "Estado", "Total"]}
+                  rows={recentOrders.map((order) => [order.number, order.supplierName, <StatusBadge key={order.id} status={order.status} />, money(orderTotal(order))])}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -1079,6 +1143,18 @@ function Metric({ label, value }: { label: string; value: string }) {
         <span>{label}</span>
         <strong>{value}</strong>
       </div>
+    </div>
+  );
+}
+
+function FlowRow({ label, value, pct }: { label: string; value: string; pct: number }) {
+  return (
+    <div className="flow-row">
+      <strong>{label}</strong>
+      <div className="flow-bar">
+        <span style={{ width: `${Math.max(4, Math.min(100, pct))}%` }} />
+      </div>
+      <span>{value}</span>
     </div>
   );
 }
