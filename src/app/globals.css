@@ -555,6 +555,47 @@ th {
   text-align: center;
 }
 
+.module-workspace {
+  display: grid;
+  gap: 14px;
+}
+
+.module-toolbar {
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.module-toolbar .toolbar:last-child {
+  margin-left: auto;
+}
+
+.module-toolbar input,
+.module-toolbar select {
+  min-width: 190px;
+  height: 40px;
+}
+
+.compact-kpis .metric {
+  min-height: 88px;
+}
+
+.compact-kpis .card-body {
+  padding: 14px 16px;
+}
+
+.compact-kpis .metric strong {
+  font-size: 20px;
+  margin-top: 8px;
+}
+
+.module-form {
+  display: grid;
+  gap: 12px;
+}
+
 .toast {
   position: fixed;
   right: 24px;

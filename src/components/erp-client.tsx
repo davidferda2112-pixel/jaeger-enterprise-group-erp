@@ -1202,18 +1202,156 @@ function StatusBadge({ status }: { status: PurchaseOrder["status"] }) {
 }
 
 function Placeholder({ title }: { title: string }) {
+  const spec = moduleSpec(title);
   return (
     <>
-      <SectionHead title={title} subtitle="Modulo reservado en la estructura del ERP." />
-      <div className="card module-placeholder">
-        <div className="card-body">
-          <Building2 size={42} color="var(--teal)" />
-          <h3>{title}</h3>
-          <p style={{ color: "var(--muted)", fontWeight: 700 }}>
-            Este modulo queda separado para conectar la logica final sin afectar el resto del sistema.
-          </p>
+      <SectionHead title={title} subtitle={spec.subtitle} />
+      <div className="module-workspace">
+        <div className="module-toolbar card">
+          <div className="toolbar">
+            {spec.actions.map((action) => (
+              <button className={action.primary ? "btn primary" : "btn"} key={action.label}>
+                {action.label}
+              </button>
+            ))}
+          </div>
+          <div className="toolbar">
+            <input placeholder="Buscar..." />
+            <select defaultValue="actual">
+              <option value="actual">Periodo actual</option>
+              <option value="mes">Este mes</option>
+              <option value="anio">Este anio</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid kpi-grid compact-kpis">
+          {spec.metrics.map((metric) => (
+            <Metric key={metric.label} label={metric.label} value={metric.value} />
+          ))}
+        </div>
+
+        <div className="grid two-grid">
+          <div className="card">
+            <div className="card-body">
+              <h3 className="panel-title">{spec.tableTitle}</h3>
+              <Table empty={spec.empty} headers={spec.headers} rows={[]} />
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-body">
+              <h3 className="panel-title">{spec.formTitle}</h3>
+              <div className="module-form">
+                {spec.fields.map((field) => (
+                  <label key={field}>
+                    {field}
+                    <input placeholder={field} />
+                  </label>
+                ))}
+                <button className="btn primary">Guardar</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </>
   );
+}
+
+function moduleSpec(title: string) {
+  const base = {
+    subtitle: "Modulo operativo con estructura Jaeger basada en el flujo del ERP CSB.",
+    actions: [
+      { label: "Nuevo", primary: true },
+      { label: "Importar" },
+      { label: "Exportar" }
+    ],
+    metrics: [
+      { label: "Total registros", value: "0" },
+      { label: "Pendientes", value: "0" },
+      { label: "Total mes", value: money(0) },
+      { label: "Estado", value: "Activo" }
+    ],
+    tableTitle: "Registros",
+    formTitle: "Registro rapido",
+    headers: ["Fecha", "Documento", "Contraparte", "Valor", "Estado"],
+    fields: ["Fecha", "Documento", "Contraparte", "Valor"],
+    empty: "Sin registros todavia."
+  };
+
+  const byTitle: Record<string, Partial<typeof base>> = {
+    "Ventas sin factura": {
+      subtitle: "Registro de ventas sin factura con sucursal, cliente, forma de pago y estado.",
+      tableTitle: "Ventas sin factura registradas",
+      formTitle: "Nueva venta sin factura",
+      headers: ["Fecha", "Sucursal", "Cliente", "Total", "Estado"],
+      fields: ["Fecha", "Sucursal", "Cliente", "Total"]
+    },
+    "Consulta ventas SF": {
+      subtitle: "Consulta y control de ventas sin factura.",
+      actions: [{ label: "Actualizar", primary: true }, { label: "Filtrar" }, { label: "Exportar" }],
+      tableTitle: "Consulta de ventas",
+      formTitle: "Filtros",
+      fields: ["Desde", "Hasta", "Cliente", "Sucursal"]
+    },
+    "Cuentas por cobrar": {
+      subtitle: "Cartera de clientes, abonos, saldos y vencimientos.",
+      tableTitle: "Facturas por cobrar",
+      formTitle: "Registrar CXC",
+      headers: ["Fecha", "Factura", "Cliente", "Saldo", "Estado"],
+      fields: ["Fecha", "Factura", "Cliente", "Total"]
+    },
+    "Cuentas por pagar": {
+      subtitle: "Cartera de proveedores vinculada a compras y facturas.",
+      tableTitle: "Facturas por pagar",
+      formTitle: "Registrar CXP",
+      headers: ["Fecha", "Factura", "Proveedor", "Saldo", "Estado"],
+      fields: ["Fecha", "Factura", "Proveedor", "Total"]
+    },
+    "Clientes": {
+      subtitle: "Base de clientes para ventas y cartera.",
+      tableTitle: "Clientes registrados",
+      formTitle: "Nuevo cliente",
+      headers: ["RUC", "Cliente", "Telefono", "Correo", "Estado"],
+      fields: ["RUC", "Nombre", "Telefono", "Correo"]
+    },
+    "Trabajadores": {
+      subtitle: "Base interna de trabajadores y responsables.",
+      tableTitle: "Trabajadores registrados",
+      formTitle: "Nuevo trabajador",
+      headers: ["Cedula", "Nombre", "Cargo", "Telefono", "Estado"],
+      fields: ["Cedula", "Nombre", "Cargo", "Telefono"]
+    },
+    "Bancos": {
+      subtitle: "Bancos, saldos, movimientos y obligaciones.",
+      tableTitle: "Cuentas bancarias",
+      formTitle: "Nueva cuenta o deuda",
+      headers: ["Banco", "Cuenta", "Saldo", "Tipo", "Estado"],
+      fields: ["Banco", "Cuenta", "Saldo", "Tipo"]
+    },
+    "Flujo de caja": {
+      subtitle: "Ingresos, egresos, saldos y proyeccion de caja.",
+      actions: [{ label: "Actualizar flujo", primary: true }, { label: "Nuevo ajuste" }, { label: "Exportar" }],
+      tableTitle: "Flujo mensual",
+      formTitle: "Ajuste de flujo",
+      headers: ["Mes", "Ingresos", "Egresos", "Neto", "Acumulado"],
+      fields: ["Fecha", "Concepto", "Ingreso", "Egreso"]
+    },
+    "Retenciones": {
+      subtitle: "Retenciones recibidas y asociacion contra CXC.",
+      tableTitle: "Retenciones registradas",
+      formTitle: "Nueva retencion",
+      headers: ["Fecha", "Cliente", "Factura", "IVA", "Renta"],
+      fields: ["Fecha", "Cliente", "Factura", "Valor"]
+    },
+    "Balance general": {
+      subtitle: "Activos, pasivos, patrimonio y variables de control.",
+      tableTitle: "Variables del balance",
+      formTitle: "Nueva variable",
+      headers: ["Tipo", "Variable", "Subitem", "Valor", "Estado"],
+      fields: ["Tipo", "Variable", "Subitem", "Valor"]
+    }
+  };
+
+  return { ...base, ...(byTitle[title] || {}) };
 }
